@@ -76,7 +76,7 @@ def exportar_pdf(df, nombre_archivo):
     return output
 
 # --- CARGA DE DATOS Y AUTENTICACIÓN ---
-st.image("logo_cfc.png", width=250)
+st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
