@@ -81,7 +81,7 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Listado SSR")
+    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Sheet1")
     df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
     df_checklist = df_checklist[df_checklist.iloc[:, 2].notna()].rename(columns={
         df_checklist.columns[2]: "Entregable",
