@@ -81,7 +81,7 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Sheet1")
+    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Listado SSR")
     df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
     df_checklist = df_checklist[df_checklist.iloc[:, 2].notna()].rename(columns={
         df_checklist.columns[2]: "Entregable",
@@ -117,11 +117,12 @@ if st.session_state.autenticado:
     if usuario_data.empty:
         st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
         st.stop()
-    ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
+        ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
     if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados en el archivo.")
         st.stop()
-        proyectos_raw = ssr_autorizados.iloc[0]
+
+    proyectos_raw = ssr_autorizados.iloc[0]
     if not any(p.strip() for p in proyectos_raw.split(',')):
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
