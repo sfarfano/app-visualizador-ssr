@@ -81,7 +81,7 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Sheet1")
+    proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Listado SSR")
     df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
     df_checklist = df_checklist[df_checklist.iloc[:, 2].notna()].rename(columns={
         df_checklist.columns[2]: "Entregable",
@@ -113,7 +113,11 @@ if not st.session_state.autenticado:
 
 if st.session_state.autenticado:
     usuario = st.session_state.usuario
-    proyectos_raw = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]['SSR Autorizados'].iloc[0]
+    usuario_data = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
+    if usuario_data.empty:
+        st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
+        st.stop()
+    proyectos_raw = usuario_data['SSR Autorizados'].iloc[0]
     opciones_dict = {f"{p.strip()} - {diccionario_nombres.get(p.strip(), '')}": p.strip() for p in proyectos_raw.split(',') if p.strip()}
     opciones_ordenadas = dict(sorted(opciones_dict.items()))
 
