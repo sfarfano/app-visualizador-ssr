@@ -121,7 +121,7 @@ if st.session_state.autenticado:
     if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados en el archivo.")
         st.stop()
-    proyectos_raw = ssr_autorizados.iloc[0]
+        proyectos_raw = ssr_autorizados.iloc[0]
     if not any(p.strip() for p in proyectos_raw.split(',')):
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
