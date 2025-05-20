@@ -121,10 +121,10 @@ if st.session_state.autenticado:
     if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados en el archivo.")
         st.stop()
-   proyectos_raw = ssr_autorizados.iloc[0]
-if not any(p.strip() for p in proyectos_raw.split(',')):
-    st.error("⚠️ No hay SSR asignados válidos para este usuario.")
-    st.stop()
+    proyectos_raw = ssr_autorizados.iloc[0]
+    if not any(p.strip() for p in proyectos_raw.split(',')):
+        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
+        st.stop()
     opciones_dict = {f"{p.strip()} - {diccionario_nombres.get(p.strip(), '')}": p.strip() for p in proyectos_raw.split(',') if p.strip()}
     opciones_ordenadas = dict(sorted(opciones_dict.items()))
 
