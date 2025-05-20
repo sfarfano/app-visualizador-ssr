@@ -117,10 +117,11 @@ if st.session_state.autenticado:
     if usuario_data.empty:
         st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
         st.stop()
-    if usuario_data['SSR Autorizados'].isna().all():
+    ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
+    if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados en el archivo.")
         st.stop()
-    proyectos_raw = usuario_data['SSR Autorizados'].dropna().iloc[0]
+    proyectos_raw = ssr_autorizados.iloc[0]
     opciones_dict = {f"{p.strip()} - {diccionario_nombres.get(p.strip(), '')}": p.strip() for p in proyectos_raw.split(',') if p.strip()}
     opciones_ordenadas = dict(sorted(opciones_dict.items()))
 
