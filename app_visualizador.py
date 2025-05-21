@@ -118,7 +118,6 @@ if st.session_state.autenticado:
         st.stop()
 
     try:
-        st.write("✅ SSR autorizados encontrados:", ssr_autorizados.tolist())
         proyectos_raw = ssr_autorizados.iloc[0] if not ssr_autorizados.empty else ""
     except IndexError:
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
@@ -174,8 +173,6 @@ if st.session_state.autenticado:
                                 elif 'pdf' in arch['mimeType']:
                                     st.markdown(f"**{arch['name']}**  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
                                     st.components.v1.iframe(f"https://drive.google.com/file/d/{arch['id']}/preview", height=400)
-                                elif 'officedocument' in arch['mimeType'] or arch['mimeType'].endswith('sheet') or arch['mimeType'].endswith('document'):
-                                    st.markdown(f"**{arch['name']}** (archivo de Office, no previsualizable en esta app)")
                                 else:
                                     st.markdown(f"- [{arch['name']}]({arch['webViewLink']})  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
                             with col2:
