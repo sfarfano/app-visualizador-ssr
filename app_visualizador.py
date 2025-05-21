@@ -117,7 +117,8 @@ if st.session_state.autenticado:
     if usuario_data.empty:
         st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
         st.stop()
-        ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
+
+    ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
     if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados en el archivo.")
         st.stop()
