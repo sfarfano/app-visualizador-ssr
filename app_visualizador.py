@@ -126,7 +126,10 @@ if st.session_state.autenticado:
     # --- CARGA DE ESTRUCTURA DE PROYECTOS ---
     try:
         estructura = pd.read_excel("estructura_189_proyectos.xlsx")
-        estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0].isin(proyectos_raw.split(","))]
+        ssr_list = [s.strip() for s in proyectos_raw.split(",") if s.strip()]
+        ssr_seleccionado = st.selectbox("Selecciona un proyecto SSR:", ssr_list)
+
+        estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0] == ssr_seleccionado]
 
         st.subheader("📂 Estructura cargada")
         st.dataframe(estructura_filtrada, use_container_width=True)
