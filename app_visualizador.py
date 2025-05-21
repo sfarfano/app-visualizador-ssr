@@ -139,7 +139,11 @@ if st.session_state.autenticado:
         st.stop()
 
     try:
-        proyectos_raw = ssr_autorizados.iloc[0] if len(ssr_autorizados) > 0 else ""
+        proyectos_raw = ssr_autorizados.iloc[0] if not ssr_autorizados.empty else ""
+    if not proyectos_raw:
+        st.error("⚠️ No se encontró ningún SSR autorizado para este usuario.")
+        st.stop()
+
     except IndexError:
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
