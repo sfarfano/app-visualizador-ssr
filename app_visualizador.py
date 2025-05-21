@@ -118,3 +118,6 @@ if st.session_state.autenticado:
         st.dataframe(estructura_filtrada, use_container_width=True)
     except Exception as e:
         st.error(f"Error al cargar estructura: {e}")
+
+    # --- AVISO DE MODO SEGURO ---
+    st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
