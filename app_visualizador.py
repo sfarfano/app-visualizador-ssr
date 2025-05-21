@@ -49,7 +49,7 @@ def buscar_id_carpeta(nombre, padre_id):
 
 def listar_archivos(carpeta_id):
     query = f"'{carpeta_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed=false"
-    archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
+    archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)" , supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
     return archivos
 
 def formato_peso(bytes_str):
@@ -87,6 +87,11 @@ if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
 
+if st.button("Cerrar sesión"):
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+    st.rerun()
+
 if not st.session_state.autenticado:
     with st.form("login_form"):
         usuario = st.text_input("Ingrese su usuario:")
@@ -123,56 +128,63 @@ if st.session_state.autenticado:
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
 
-    try:
-        estructura = pd.read_excel("estructura_189_proyectos.xlsx")
-        ssr_list = [s.strip() for s in proyectos_raw.split(",") if s.strip()]
-        ssr_seleccionado = st.selectbox("Selecciona un proyecto SSR:", ssr_list)
+    estructura = pd.read_excel("estructura_189_proyectos.xlsx")
+    ssr_list = [s.strip() for s in proyectos_raw.split(",") if s.strip()]
+    ssr_seleccionado = st.selectbox("Selecciona un proyecto SSR:", ssr_list)
+    estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0] == ssr_seleccionado]
+    st.subheader("📂 Estructura cargada")
+    st.dataframe(estructura_filtrada, use_container_width=True)
 
-        estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0] == ssr_seleccionado]
+    sub1_options = estructura_filtrada['Subcarpeta 1'].dropna().unique().tolist()
+    subcarpeta1 = st.selectbox("Selecciona subcarpeta principal:", sub1_options)
+    sub2_options = estructura_filtrada[estructura_filtrada['Subcarpeta 1'] == subcarpeta1]['Subcarpeta 2'].dropna().unique().tolist()
+    subcarpeta2 = st.selectbox("Selecciona subcarpeta secundaria:", sub2_options) if sub2_options else None
 
-        st.subheader("📂 Estructura cargada")
-        st.dataframe(estructura_filtrada, use_container_width=True)
-
-        # --- NUEVA INTERFAZ DE FILTROS ---
-        sub1_options = estructura_filtrada['Subcarpeta 1'].dropna().unique().tolist()
-        subcarpeta1 = st.selectbox("Selecciona subcarpeta principal:", sub1_options)
-
-        sub2_options = estructura_filtrada[estructura_filtrada['Subcarpeta 1'] == subcarpeta1]['Subcarpeta 2'].dropna().unique().tolist()
-        subcarpeta2 = st.selectbox("Selecciona subcarpeta secundaria:", sub2_options) if sub2_options else None
-
-        if st.button("🔍 Ver documentos"):
-            with st.expander("🔎 Revisar documentos por proyecto", expanded=True):
-                estructura_target = estructura_filtrada[
-                    (estructura_filtrada['Subcarpeta 1'] == subcarpeta1) &
-                    (estructura_filtrada['Subcarpeta 2'] == subcarpeta2 if subcarpeta2 else estructura_filtrada['Subcarpeta 2'].isna())
-                ]
-
-                for _, fila in estructura_target.iterrows():
-                    proyecto = fila['Nombre del proyecto']
-                    sub1 = fila['Subcarpeta 1']
-                    sub2 = fila['Subcarpeta 2'] if pd.notna(fila['Subcarpeta 2']) else None
-                    with st.container():
-                        st.markdown(f"**📁 {proyecto} / {sub1}{' / ' + sub2 if sub2 else ''}**")
-                        id_ssr = buscar_id_carpeta(proyecto.split(" - ")[0], FOLDER_BASE_ID)
-                        if not id_ssr:
-                            st.error("No se encontró carpeta SSR")
-                            continue
-                        id_sub1 = buscar_id_carpeta(sub1, id_ssr)
-                        if not id_sub1:
-                            st.warning("Subcarpeta 1 no encontrada")
-                            continue
-                        id_sub2 = buscar_id_carpeta(sub2, id_sub1) if sub2 else id_sub1
-                        archivos = listar_archivos(id_sub2)
-                        if not archivos:
-                            st.info("No hay archivos disponibles.")
-                        else:
-                            for arch in archivos:
-                                col1, col2 = st.columns([6,1])
-                                with col1:
+    if st.button("🔍 Ver documentos"):
+        with st.expander("🔎 Revisar documentos por proyecto", expanded=True):
+            estructura_target = estructura_filtrada[
+                (estructura_filtrada['Subcarpeta 1'] == subcarpeta1) &
+                (estructura_filtrada['Subcarpeta 2'] == subcarpeta2 if subcarpeta2 else estructura_filtrada['Subcarpeta 2'].isna())
+            ]
+            for _, fila in estructura_target.iterrows():
+                proyecto = fila['Nombre del proyecto']
+                sub1 = fila['Subcarpeta 1']
+                sub2 = fila['Subcarpeta 2'] if pd.notna(fila['Subcarpeta 2']) else None
+                with st.container():
+                    st.markdown(f"**📁 {proyecto} / {sub1}{' / ' + sub2 if sub2 else ''}**")
+                    id_ssr = buscar_id_carpeta(proyecto.split(" - ")[0], FOLDER_BASE_ID)
+                    if not id_ssr:
+                        st.error("No se encontró carpeta SSR")
+                        continue
+                    id_sub1 = buscar_id_carpeta(sub1, id_ssr)
+                    if not id_sub1:
+                        st.warning("Subcarpeta 1 no encontrada")
+                        continue
+                    id_sub2 = buscar_id_carpeta(sub2, id_sub1) if sub2 else id_sub1
+                    archivos = listar_archivos(id_sub2)
+                    if not archivos:
+                        st.info("No hay archivos disponibles.")
+                    else:
+                        for arch in archivos:
+                            col1, col2 = st.columns([6,1])
+                            with col1:
+                                if 'image' in arch['mimeType']:
+                                    img_data = requests.get(f"https://drive.google.com/uc?id={arch['id']}").content
+                                    st.image(img_data, caption=arch['name'], use_column_width=True)
+                                elif 'pdf' in arch['mimeType']:
+                                    st.markdown(f"**{arch['name']}**  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
+                                    st.components.v1.iframe(f"https://drive.google.com/file/d/{arch['id']}/preview", height=400)
+                                elif 'officedocument' in arch['mimeType'] or arch['mimeType'].endswith('sheet') or arch['mimeType'].endswith('document'):
+                                    st.markdown(f"**{arch['name']}** (archivo de Office, no previsualizable en esta app)")
+                                else:
                                     st.markdown(f"- [{arch['name']}]({arch['webViewLink']})  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
-                                with col2:
-                                    st.download_button("⬇️", data=requests.get(arch['webViewLink']).content, file_name=arch['name'], mime=arch['mimeType'])
-    except Exception as e:
-        st.error(f"Error al cargar estructura: {e}")
+                            with col2:
+                                st.download_button("⬇️", data=requests.get(arch['webViewLink']).content, file_name=arch['name'], mime=arch['mimeType'])
+
+    if usuario == 'admin':
+        st.divider()
+        st.subheader("📝 Checklist de Etapas (solo visible para admin)")
+        checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx")
+        st.dataframe(checklist[checklist['Nombre Proyecto'].str.contains(ssr_seleccionado, na=False)], use_container_width=True)
 
     st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
