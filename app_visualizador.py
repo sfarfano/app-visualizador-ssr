@@ -109,12 +109,12 @@ if st.session_state.autenticado:
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
 
-    st.write("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
-
     # --- CARGA DE ESTRUCTURA DE PROYECTOS ---
     try:
         estructura = pd.read_excel("estructura_189_proyectos.xlsx")
+        estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0].isin(proyectos_raw.split(","))]
+
         st.subheader("📂 Estructura cargada")
-        st.dataframe(estructura.head())
+        st.dataframe(estructura_filtrada, use_container_width=True)
     except Exception as e:
         st.error(f"Error al cargar estructura: {e}")
