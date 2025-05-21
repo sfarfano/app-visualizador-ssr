@@ -123,6 +123,12 @@ if not st.session_state.autenticado:
 if st.session_state.autenticado:
     usuario = st.session_state.usuario
     usuario_data = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
+    st.write("Datos del usuario encontrados:")
+    st.dataframe(usuario_data)
+    
+    st.write("SSR Autorizados crudo:")
+    st.write(usuario_data['SSR Autorizados'].tolist())
+
     if usuario_data.empty:
         st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
         st.stop()
