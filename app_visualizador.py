@@ -192,8 +192,8 @@ if st.session_state.autenticado:
                 mime="text/csv"
             )
 
-elif menu == "Visor":
+    elif menu == "Visor":
         pass
 
-elif menu == "Explorador":
+    elif menu == "Explorador":
         st.info("🔧 En desarrollo: explorador jerárquico con navegación entre subcarpetas y tipos de documentos.")
