@@ -30,7 +30,6 @@ service = conectar_drive()
 
 # --- FUNCIONES DE GOOGLE DRIVE ---
 
-# --- UTILIDAD PARA EXPORTAR PENDIENTES ---
 def generar_csv_pendientes(resumen):
     filas = []
     for codigo, label, _, _, _, pendientes in resumen:
@@ -66,8 +65,6 @@ try:
     autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
         lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
     )
-    st.write("Usuarios cargados:", autorizaciones['Usuario'].unique())
-
 except Exception as e:
     st.error(f"Error al cargar archivos: {e}")
     st.stop()
@@ -113,3 +110,11 @@ if st.session_state.autenticado:
         st.stop()
 
     st.write("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
+
+    # --- CARGA DE ESTRUCTURA DE PROYECTOS ---
+    try:
+        estructura = pd.read_excel("estructura_189_proyectos.xlsx")
+        st.subheader("📂 Estructura cargada")
+        st.dataframe(estructura.head())
+    except Exception as e:
+        st.error(f"Error al cargar estructura: {e}")
