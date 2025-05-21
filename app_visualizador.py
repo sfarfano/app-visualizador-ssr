@@ -129,17 +129,13 @@ if st.session_state.autenticado:
         st.stop()
 
     ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
-    if ssr_autorizados.empty or ssr_autorizados.shape[0] == 0:
+    if ssr_autorizados.empty:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados.")
         st.stop()
 
-    try:
-        proyectos_raw = ssr_autorizados.iloc[0]
-        if not isinstance(proyectos_raw, str) or not any(p.strip() for p in proyectos_raw.split(',')):
-            st.error("⚠️ No hay SSR asignados válidos para este usuario.")
-            st.stop()
-    except Exception as e:
-        st.error(f"⚠️ Error al interpretar los SSR asignados: {e}")
+    proyectos_raw = ssr_autorizados.values[0] if len(ssr_autorizados.values) > 0 else ""
+    if not isinstance(proyectos_raw, str) or not any(p.strip() for p in proyectos_raw.split(',')):
+        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
 
     opciones_dict = {f"{p.strip()} - {diccionario_nombres.get(p.strip(), '')}": p.strip() for p in proyectos_raw.split(',') if p.strip()}
