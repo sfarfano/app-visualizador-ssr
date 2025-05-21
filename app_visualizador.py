@@ -81,6 +81,15 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
+    # LIMPIEZA DE DATOS DE AUTORIZACIÓN
+autorizaciones['Usuario'] = autorizaciones['Usuario'].astype(str).str.strip()
+autorizaciones['PIN'] = autorizaciones['PIN'].astype(str).str.strip()
+autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].astype(str).str.strip()
+autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].replace('nan', '')
+autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
+    lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
+)
+
     proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Sheet1")
     df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
     df_checklist = df_checklist[df_checklist.iloc[:, 2].notna()].rename(columns={
