@@ -66,6 +66,8 @@ try:
     autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
         lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
     )
+    st.write("Usuarios cargados:", autorizaciones['Usuario'].unique())
+
 except Exception as e:
     st.error(f"Error al cargar archivos: {e}")
     st.stop()
