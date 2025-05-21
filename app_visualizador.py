@@ -123,12 +123,6 @@ if not st.session_state.autenticado:
 if st.session_state.autenticado:
     usuario = st.session_state.usuario
     usuario_data = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
-    st.write("Datos del usuario encontrados:")
-    st.dataframe(usuario_data)
-    
-    st.write("SSR Autorizados crudo:")
-    st.write(usuario_data['SSR Autorizados'].tolist())
-
     if usuario_data.empty:
         st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
         st.stop()
@@ -139,11 +133,8 @@ if st.session_state.autenticado:
         st.stop()
 
     try:
+        st.write("✅ SSR autorizados encontrados:", ssr_autorizados.tolist())
         proyectos_raw = ssr_autorizados.iloc[0] if not ssr_autorizados.empty else ""
-    if not proyectos_raw:
-        st.error("⚠️ No se encontró ningún SSR autorizado para este usuario.")
-        st.stop()
-
     except IndexError:
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
