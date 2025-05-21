@@ -82,7 +82,6 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    # LIMPIEZA DE DATOS DE AUTORIZACIÓN
     autorizaciones['Usuario'] = autorizaciones['Usuario'].astype(str).str.strip()
     autorizaciones['PIN'] = autorizaciones['PIN'].astype(str).str.strip()
     autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].astype(str).str.strip()
@@ -133,7 +132,12 @@ if st.session_state.autenticado:
         st.error("⚠️ El usuario no tiene SSR autorizados asignados.")
         st.stop()
 
-    proyectos_raw = ssr_autorizados.values[0] if len(ssr_autorizados.values) > 0 else ""
+    try:
+        proyectos_raw = ssr_autorizados.iloc[0] if len(ssr_autorizados) > 0 else ""
+    except IndexError:
+        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
+        st.stop()
+
     if not isinstance(proyectos_raw, str) or not any(p.strip() for p in proyectos_raw.split(',')):
         st.error("⚠️ No hay SSR asignados válidos para este usuario.")
         st.stop()
