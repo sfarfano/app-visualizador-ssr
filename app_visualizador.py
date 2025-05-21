@@ -41,6 +41,7 @@ def generar_csv_pendientes(resumen):
                 "Entregable Pendiente": item
             })
     return pd.DataFrame(filas)
+
 def buscar_id_carpeta(nombre, padre_id):
     query = f"name contains '{nombre}' and '{padre_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
     resultados = service.files().list(q=query, fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
@@ -82,13 +83,13 @@ st.title("🔍 Plataforma de Revisión de Documentos SSR")
 try:
     autorizaciones = pd.read_excel("autorizaciones.xlsx")
     # LIMPIEZA DE DATOS DE AUTORIZACIÓN
-autorizaciones['Usuario'] = autorizaciones['Usuario'].astype(str).str.strip()
-autorizaciones['PIN'] = autorizaciones['PIN'].astype(str).str.strip()
-autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].astype(str).str.strip()
-autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].replace('nan', '')
-autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
-    lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
-)
+    autorizaciones['Usuario'] = autorizaciones['Usuario'].astype(str).str.strip()
+    autorizaciones['PIN'] = autorizaciones['PIN'].astype(str).str.strip()
+    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].astype(str).str.strip()
+    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].replace('nan', '')
+    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
+        lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
+    )
 
     proyectos_nombres = pd.read_excel("estructura_189_proyectos.xlsx", sheet_name="Sheet1")
     df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
@@ -140,8 +141,7 @@ if st.session_state.autenticado:
     except Exception as e:
         st.error(f"⚠️ Error al interpretar los SSR asignados: {e}")
         st.stop()
-        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
-        st.stop()
+
     opciones_dict = {f"{p.strip()} - {diccionario_nombres.get(p.strip(), '')}": p.strip() for p in proyectos_raw.split(',') if p.strip()}
     opciones_ordenadas = dict(sorted(opciones_dict.items()))
 
@@ -191,13 +191,12 @@ if st.session_state.autenticado:
         ], columns=["Código SSR", "Nombre Proyecto", "Entregables OK", "Totales", "% Avance"])
 
         st.download_button(
-    "📥 Descargar resumen en Excel",
-    data=df_resumen.to_csv(index=False).encode("utf-8"),
-    file_name="resumen_avance_ssr.csv",
-    mime="text/csv"
-)
+            "📥 Descargar resumen en Excel",
+            data=df_resumen.to_csv(index=False).encode("utf-8"),
+            file_name="resumen_avance_ssr.csv",
+            mime="text/csv"
+        )
 
-# Botón para descargar pendientes por SSR
         pendientes_df = generar_csv_pendientes(resumen_data)
         if not pendientes_df.empty:
             st.download_button(
