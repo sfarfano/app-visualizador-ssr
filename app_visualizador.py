@@ -52,6 +52,20 @@ def listar_archivos(carpeta_id):
     archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
     return archivos
 
+def formato_peso(bytes_str):
+    try:
+        b = int(bytes_str)
+        if b < 1024:
+            return f"{b} B"
+        elif b < 1024**2:
+            return f"{b/1024:.1f} KB"
+        elif b < 1024**3:
+            return f"{b/1024**2:.1f} MB"
+        else:
+            return f"{b/1024**3:.1f} GB"
+    except:
+        return "-"
+
 # --- CARGA DE DATOS Y AUTENTICACIÓN ---
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
@@ -116,6 +130,34 @@ if st.session_state.autenticado:
 
         st.subheader("📂 Estructura cargada")
         st.dataframe(estructura_filtrada, use_container_width=True)
+
+        # --- VISUALIZACIÓN DE ARCHIVOS POR PROYECTO ---
+        with st.expander("🔎 Revisar documentos por proyecto"):
+            for _, fila in estructura_filtrada.iterrows():
+                proyecto = fila['Nombre del proyecto']
+                sub1 = fila['Subcarpeta 1']
+                sub2 = fila['Subcarpeta 2'] if pd.notna(fila['Subcarpeta 2']) else None
+                with st.container():
+                    st.markdown(f"**📁 {proyecto} / {sub1}{' / ' + sub2 if sub2 else ''}**")
+                    id_ssr = buscar_id_carpeta(proyecto.split(" - ")[0], FOLDER_BASE_ID)
+                    if not id_ssr:
+                        st.error("No se encontró carpeta SSR")
+                        continue
+                    id_sub1 = buscar_id_carpeta(sub1, id_ssr)
+                    if not id_sub1:
+                        st.warning("Subcarpeta 1 no encontrada")
+                        continue
+                    id_sub2 = buscar_id_carpeta(sub2, id_sub1) if sub2 else id_sub1
+                    archivos = listar_archivos(id_sub2)
+                    if not archivos:
+                        st.info("No hay archivos disponibles.")
+                    else:
+                        for arch in archivos:
+                            col1, col2 = st.columns([6,1])
+                            with col1:
+                                st.markdown(f"- [{arch['name']}]({arch['webViewLink']})  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
+                            with col2:
+                                st.download_button("⬇️", data=requests.get(arch['webViewLink']).content, file_name=arch['name'], mime=arch['mimeType'])
     except Exception as e:
         st.error(f"Error al cargar estructura: {e}")
 
