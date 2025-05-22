@@ -168,8 +168,11 @@ if st.session_state.autenticado:
                             col1, col2 = st.columns([6,1])
                             with col1:
                                 if 'image' in arch['mimeType']:
-                                    img_data = requests.get(f"https://drive.google.com/uc?id={arch['id']}").content
-                                    st.image(img_data, caption=arch['name'], use_column_width=True)
+                                    try:
+                                        img_data = requests.get(f"https://drive.google.com/uc?id={arch['id']}").content
+                                        st.image(img_data, caption=arch['name'], use_column_width=True)
+                                    except:
+                                        st.warning(f"No se pudo mostrar la imagen: {arch['name']}")
                                 elif 'pdf' in arch['mimeType']:
                                     st.markdown(f"**{arch['name']}**  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
                                     st.components.v1.iframe(f"https://drive.google.com/file/d/{arch['id']}/preview", height=400)
@@ -181,7 +184,9 @@ if st.session_state.autenticado:
     if usuario == 'admin':
         st.divider()
         st.subheader("📝 Checklist de Etapas (solo visible para admin)")
-        checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx")
-        st.dataframe(checklist, use_container_width=True)
+        checklist_data = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()
+        checklist_items = checklist_data[0].tolist()
+        checklist_matrix = pd.DataFrame(index=checklist_items, columns=ssr_list).fillna("Pendiente")
+        st.dataframe(checklist_matrix, use_container_width=True)
 
     st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
