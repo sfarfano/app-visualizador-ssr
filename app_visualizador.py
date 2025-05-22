@@ -182,6 +182,6 @@ if st.session_state.autenticado:
         st.divider()
         st.subheader("📝 Checklist de Etapas (solo visible para admin)")
         checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx")
-        st.dataframe(checklist[checklist['Nombre Proyecto'].str.contains(ssr_seleccionado, na=False)], use_container_width=True)
+        st.dataframe(checklist, use_container_width=True)
 
     st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
