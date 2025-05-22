@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from fpdf import FPDF
 from io import BytesIO
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import requests
 
 # --- CONFIGURACIÓN INICIAL ---
@@ -76,140 +76,38 @@ def formato_peso(bytes_str):
     except:
         return "-"
 
-# --- CARGA DE DATOS Y AUTENTICACIÓN ---
-st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
-st.title("🔍 Plataforma de Revisión de Documentos SSR")
+# --- EXPORTAR ESTADO A EXCEL Y PDF ---
+def exportar_checklist_estado(checklist_estado):
+    filas = []
+    for ssr, entregables in checklist_estado.items():
+        for item, estado in entregables.items():
+            filas.append({"SSR": ssr, "Entregable": item, "Cumplido": "Sí" if estado else "No"})
+    return pd.DataFrame(filas)
 
-try:
-    autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    autorizaciones['Usuario'] = autorizaciones['Usuario'].astype(str).str.strip()
-    autorizaciones['PIN'] = autorizaciones['PIN'].astype(str).str.strip()
-    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].astype(str).str.strip()
-    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].replace('nan', '')
-    autorizaciones['SSR Autorizados'] = autorizaciones['SSR Autorizados'].apply(
-        lambda x: ','.join([s.strip() for s in x.split(',') if s.strip()]) if isinstance(x, str) else ''
+def generar_pdf_checklist(df):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=10)
+    pdf.cell(200, 10, txt="Checklist de Entregables SSR", ln=True, align="C")
+    pdf.ln(10)
+    for index, row in df.iterrows():
+        pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
+    return pdf.output(dest='S').encode('latin1')
+
+# --- BOTONES DE EXPORTACIÓN (para admin) ---
+if 'checklist_estado' in st.session_state and st.session_state.get('es_admin'):
+    df_export = exportar_checklist_estado(st.session_state['checklist_estado'])
+    
+    st.download_button(
+        "📥 Descargar checklist en Excel",
+        data=df_export.to_csv(index=False).encode('utf-8'),
+        file_name="estado_checklist_ssr.csv",
+        mime="text/csv"
     )
-except Exception as e:
-    st.error(f"Error al cargar archivos: {e}")
-    st.stop()
 
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.usuario = ""
-    st.session_state.checklist_estado = {}
-
-if st.button("Cerrar sesión"):
-    st.session_state.autenticado = False
-    st.session_state.usuario = ""
-    st.rerun()
-
-if not st.session_state.autenticado:
-    with st.form("login_form"):
-        usuario = st.text_input("Ingrese su usuario:")
-        pin = st.text_input("Ingrese su PIN:", type="password")
-        login = st.form_submit_button("Ingresar")
-    if login:
-        if not ((autorizaciones['Usuario'].astype(str).str.strip() == usuario.strip()) & (autorizaciones['PIN'].astype(str).str.strip() == pin.strip())).any():
-            st.error("Usuario o PIN incorrecto.")
-            st.stop()
-        st.session_state.autenticado = True
-        st.session_state.usuario = usuario.strip()
-        st.rerun()
-
-if st.session_state.autenticado:
-    usuario = st.session_state.usuario
-    usuario_data = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
-    if usuario_data.empty:
-        st.error("⚠️ Usuario no autorizado o sin proyectos asignados.")
-        st.stop()
-
-    ssr_autorizados = usuario_data['SSR Autorizados'].dropna()
-    if ssr_autorizados.empty:
-        st.error("⚠️ El usuario no tiene SSR autorizados asignados.")
-        st.stop()
-
-    try:
-        proyectos_raw = ssr_autorizados.iloc[0] if not ssr_autorizados.empty else ""
-    except IndexError:
-        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
-        st.stop()
-
-    if not isinstance(proyectos_raw, str) or not any(p.strip() for p in proyectos_raw.split(',')):
-        st.error("⚠️ No hay SSR asignados válidos para este usuario.")
-        st.stop()
-
-    estructura = pd.read_excel("estructura_189_proyectos.xlsx")
-    ssr_list = [s.strip() for s in proyectos_raw.split(",") if s.strip()]
-    ssr_seleccionado = st.selectbox("Selecciona un proyecto SSR:", ssr_list)
-    estructura_filtrada = estructura[estructura['Nombre del proyecto'].str.extract(r'(SSR\d{3})')[0] == ssr_seleccionado]
-    st.subheader("📂 Estructura cargada")
-    st.dataframe(estructura_filtrada, use_container_width=True)
-
-    sub1_options = estructura_filtrada['Subcarpeta 1'].dropna().unique().tolist()
-    subcarpeta1 = st.selectbox("Selecciona subcarpeta principal:", sub1_options)
-    sub2_options = estructura_filtrada[estructura_filtrada['Subcarpeta 1'] == subcarpeta1]['Subcarpeta 2'].dropna().unique().tolist()
-    subcarpeta2 = st.selectbox("Selecciona subcarpeta secundaria:", sub2_options) if sub2_options else None
-
-    if st.button("🔍 Ver documentos"):
-        with st.expander("🔎 Revisar documentos por proyecto", expanded=True):
-            estructura_target = estructura_filtrada[
-                (estructura_filtrada['Subcarpeta 1'] == subcarpeta1) &
-                (estructura_filtrada['Subcarpeta 2'] == subcarpeta2 if subcarpeta2 else estructura_filtrada['Subcarpeta 2'].isna())
-            ]
-            for _, fila in estructura_target.iterrows():
-                proyecto = fila['Nombre del proyecto']
-                sub1 = fila['Subcarpeta 1']
-                sub2 = fila['Subcarpeta 2'] if pd.notna(fila['Subcarpeta 2']) else None
-                with st.container():
-                    st.markdown(f"**📁 {proyecto} / {sub1}{' / ' + sub2 if sub2 else ''}**")
-                    id_ssr = buscar_id_carpeta(proyecto.split(" - ")[0], FOLDER_BASE_ID)
-                    if not id_ssr:
-                        st.error("No se encontró carpeta SSR")
-                        continue
-                    id_sub1 = buscar_id_carpeta(sub1, id_ssr)
-                    if not id_sub1:
-                        st.warning("Subcarpeta 1 no encontrada")
-                        continue
-                    id_sub2 = buscar_id_carpeta(sub2, id_sub1) if sub2 else id_sub1
-                    archivos = listar_archivos(id_sub2)
-                    if not archivos:
-                        st.info("No hay archivos disponibles.")
-                    else:
-                        for arch in archivos:
-                            col1, col2 = st.columns([6,1])
-                            with col1:
-                                if 'image' in arch['mimeType']:
-                                    try:
-                                        img_data = descargar_contenido_binario(arch['id'])
-                                        st.image(img_data, caption=arch['name'])
-                                    except:
-                                        st.warning(f"No se pudo mostrar la imagen: {arch['name']}")
-                                elif 'pdf' in arch['mimeType']:
-                                    st.markdown(f"**{arch['name']}**  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
-                                    st.components.v1.iframe(f"https://drive.google.com/file/d/{arch['id']}/preview", height=400)
-                                else:
-                                    st.markdown(f"- [{arch['name']}]({arch['webViewLink']})  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
-                            with col2:
-                                try:
-                                    contenido = descargar_contenido_binario(arch['id'])
-                                    st.download_button("⬇️", data=contenido, file_name=arch['name'], mime=arch['mimeType'])
-                                except:
-                                    st.warning("Error en descarga")
-
-    if usuario == 'admin':
-        st.divider()
-        st.subheader("📝 Checklist de Etapas (solo visible para admin)")
-        try:
-            checklist_data = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()
-            checklist_items = checklist_data[0].tolist()
-            if ssr_seleccionado not in st.session_state.checklist_estado:
-                st.session_state.checklist_estado[ssr_seleccionado] = {item: False for item in checklist_items}
-            st.write("Marca los entregables cumplidos para este proyecto:")
-            for item in checklist_items:
-                st.session_state.checklist_estado[ssr_seleccionado][item] = st.checkbox(item, value=st.session_state.checklist_estado[ssr_seleccionado][item])
-            if st.button("💾 Guardar estado del checklist"):
-                st.success("✔️ Checklist actualizado para " + ssr_seleccionado)
-        except Exception as e:
-            st.error(f"Error cargando checklist: {e}")
-
-    st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
+    st.download_button(
+        "📥 Descargar checklist en PDF",
+        data=generar_pdf_checklist(df_export),
+        file_name="estado_checklist_ssr.pdf",
+        mime="application/pdf"
+    )
