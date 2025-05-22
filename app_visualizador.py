@@ -96,6 +96,7 @@ except Exception as e:
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
+    st.session_state.checklist_estado = {}
 
 if st.button("Cerrar sesión"):
     st.session_state.autenticado = False
@@ -201,10 +202,13 @@ if st.session_state.autenticado:
         try:
             checklist_data = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()
             checklist_items = checklist_data[0].tolist()
-            checklist_matrix = pd.DataFrame(index=checklist_items, columns=ssr_list).fillna("Pendiente")
-            checklist_matrix.reset_index(inplace=True)
-            checklist_matrix.rename(columns={"index": "Nombre Proyecto"}, inplace=True)
-            st.dataframe(checklist_matrix, use_container_width=True)
+            if ssr_seleccionado not in st.session_state.checklist_estado:
+                st.session_state.checklist_estado[ssr_seleccionado] = {item: False for item in checklist_items}
+            st.write("Marca los entregables cumplidos para este proyecto:")
+            for item in checklist_items:
+                st.session_state.checklist_estado[ssr_seleccionado][item] = st.checkbox(item, value=st.session_state.checklist_estado[ssr_seleccionado][item])
+            if st.button("💾 Guardar estado del checklist"):
+                st.success("✔️ Checklist actualizado para " + ssr_seleccionado)
         except Exception as e:
             st.error(f"Error cargando checklist: {e}")
 
