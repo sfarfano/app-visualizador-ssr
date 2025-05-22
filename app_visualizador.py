@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 from fpdf import FPDF
 from io import BytesIO
 from PIL import Image
@@ -28,8 +29,17 @@ def conectar_drive():
 
 service = conectar_drive()
 
-# --- FUNCIONES DE GOOGLE DRIVE ---
+def descargar_contenido_binario(file_id):
+    request = service.files().get_media(fileId=file_id)
+    buffer = BytesIO()
+    downloader = MediaIoBaseDownload(buffer, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    buffer.seek(0)
+    return buffer.read()
 
+# --- FUNCIONES DE GOOGLE DRIVE ---
 def generar_csv_pendientes(resumen):
     filas = []
     for codigo, label, _, _, _, pendientes in resumen:
@@ -169,8 +179,8 @@ if st.session_state.autenticado:
                             with col1:
                                 if 'image' in arch['mimeType']:
                                     try:
-                                        img_data = requests.get(f"https://drive.google.com/uc?id={arch['id']}").content
-                                        st.image(img_data, caption=arch['name'], use_column_width=True)
+                                        img_data = descargar_contenido_binario(arch['id'])
+                                        st.image(img_data, caption=arch['name'])
                                     except:
                                         st.warning(f"No se pudo mostrar la imagen: {arch['name']}")
                                 elif 'pdf' in arch['mimeType']:
@@ -179,14 +189,23 @@ if st.session_state.autenticado:
                                 else:
                                     st.markdown(f"- [{arch['name']}]({arch['webViewLink']})  _(modificado: {arch['modifiedTime'][:10]}, tamaño: {formato_peso(arch.get('size','0'))})_")
                             with col2:
-                                st.download_button("⬇️", data=requests.get(arch['webViewLink']).content, file_name=arch['name'], mime=arch['mimeType'])
+                                try:
+                                    contenido = descargar_contenido_binario(arch['id'])
+                                    st.download_button("⬇️", data=contenido, file_name=arch['name'], mime=arch['mimeType'])
+                                except:
+                                    st.warning("Error en descarga")
 
     if usuario == 'admin':
         st.divider()
         st.subheader("📝 Checklist de Etapas (solo visible para admin)")
-        checklist_data = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()
-        checklist_items = checklist_data[0].tolist()
-        checklist_matrix = pd.DataFrame(index=checklist_items, columns=ssr_list).fillna("Pendiente")
-        st.dataframe(checklist_matrix, use_container_width=True)
+        try:
+            checklist_data = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()
+            checklist_items = checklist_data[0].tolist()
+            checklist_matrix = pd.DataFrame(index=checklist_items, columns=ssr_list).fillna("Pendiente")
+            checklist_matrix.reset_index(inplace=True)
+            checklist_matrix.rename(columns={"index": "Nombre Proyecto"}, inplace=True)
+            st.dataframe(checklist_matrix, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error cargando checklist: {e}")
 
     st.warning("⚠️ Modo seguro: funciones deshabilitadas hasta cargar estructura completa correctamente.")
