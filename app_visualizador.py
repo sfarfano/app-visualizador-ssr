@@ -131,9 +131,9 @@ else:
         st.session_state.checklist_estado[seleccionado] = {item: False for item in checklist_base}
 
     st.markdown("### Checklist del Proyecto")
-    for item in checklist_base:
+    for i, item in enumerate(checklist_base):
         st.session_state.checklist_estado[seleccionado][item] = st.checkbox(
-            item, value=st.session_state.checklist_estado[seleccionado][item]
+            item, value=st.session_state.checklist_estado[seleccionado][item], key=f"{seleccionado}_{i}"
         )
 
     st.divider()
