@@ -29,6 +29,7 @@ def conectar_drive():
 
 service = conectar_drive()
 
+# --- FUNCIONES ---
 def descargar_contenido_binario(file_id):
     request = service.files().get_media(fileId=file_id)
     buffer = BytesIO()
@@ -39,18 +40,6 @@ def descargar_contenido_binario(file_id):
     buffer.seek(0)
     return buffer.read()
 
-# --- FUNCIONES DE GOOGLE DRIVE ---
-def generar_csv_pendientes(resumen):
-    filas = []
-    for codigo, label, _, _, _, pendientes in resumen:
-        for item in pendientes:
-            filas.append({
-                "Código SSR": codigo,
-                "Nombre Proyecto": label,
-                "Entregable Pendiente": item
-            })
-    return pd.DataFrame(filas)
-
 def buscar_id_carpeta(nombre, padre_id):
     query = f"name contains '{nombre}' and '{padre_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
     resultados = service.files().list(q=query, fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
@@ -59,7 +48,7 @@ def buscar_id_carpeta(nombre, padre_id):
 
 def listar_archivos(carpeta_id):
     query = f"'{carpeta_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed=false"
-    archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)" , supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
+    archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
     return archivos
 
 def formato_peso(bytes_str):
@@ -76,7 +65,6 @@ def formato_peso(bytes_str):
     except:
         return "-"
 
-# --- EXPORTAR ESTADO A EXCEL Y PDF ---
 def exportar_checklist_estado(checklist_estado):
     filas = []
     for ssr, entregables in checklist_estado.items():
@@ -97,24 +85,81 @@ def generar_pdf_checklist(df):
     buffer.seek(0)
     return buffer
 
-# --- BOTONES DE EXPORTACIÓN (para admin) ---
-if 'checklist_estado' in st.session_state and st.session_state.get('es_admin'):
-    df_export = exportar_checklist_estado(st.session_state['checklist_estado'])
+# --- CUERPO PRINCIPAL ---
+st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
+st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
-    st.download_button(
-        "📥 Descargar checklist en Excel",
-        data=df_export.to_csv(index=False).encode('utf-8'),
-        file_name="estado_checklist_ssr.csv",
-        mime="text/csv"
-    )
+try:
+    autorizaciones = pd.read_excel("autorizaciones.xlsx")
+    estructura = pd.read_excel("estructura_189_proyectos.xlsx")
+    checklist_base = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()[0].tolist()
+except Exception as e:
+    st.error(f"Error cargando archivos base: {e}")
+    st.stop()
 
-    try:
-        buffer_pdf = generar_pdf_checklist(df_export)
-        st.download_button(
-            "📥 Descargar checklist en PDF",
-            data=buffer_pdf.getvalue(),
-            file_name="estado_checklist_ssr.pdf",
-            mime="application/pdf"
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+    st.session_state.checklist_estado = {}
+
+if not st.session_state.autenticado:
+    with st.form("login"):
+        usuario = st.text_input("Usuario")
+        pin = st.text_input("PIN", type="password")
+        submitted = st.form_submit_button("Ingresar")
+        if submitted:
+            fila = autorizaciones[(autorizaciones['Usuario'].astype(str).str.strip() == usuario.strip()) &
+                                  (autorizaciones['PIN'].astype(str).str.strip() == pin.strip())]
+            if fila.empty:
+                st.error("Usuario o PIN incorrecto")
+            else:
+                st.session_state.autenticado = True
+                st.session_state.usuario = usuario.strip()
+                st.rerun()
+else:
+    usuario = st.session_state.usuario
+    fila = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
+    proyectos = fila['SSR Autorizados'].iloc[0].split(',')
+    proyectos = [p.strip() for p in proyectos if p.strip()]
+    es_admin = usuario.lower() == 'admin'
+    st.session_state.es_admin = es_admin
+
+    st.success(f"Bienvenido {usuario}")
+    seleccionado = st.selectbox("Selecciona un SSR:", proyectos)
+
+    if seleccionado not in st.session_state.checklist_estado:
+        st.session_state.checklist_estado[seleccionado] = {item: False for item in checklist_base}
+
+    st.markdown("### Checklist del Proyecto")
+    for item in checklist_base:
+        st.session_state.checklist_estado[seleccionado][item] = st.checkbox(
+            item, value=st.session_state.checklist_estado[seleccionado][item]
         )
-    except Exception as e:
-        st.error(f"❌ Error al generar PDF: {e}")
+
+    st.divider()
+
+    if st.session_state.get('es_admin'):
+        df_export = exportar_checklist_estado(st.session_state['checklist_estado'])
+
+        st.download_button(
+            "📥 Descargar checklist en Excel",
+            data=df_export.to_csv(index=False).encode('utf-8'),
+            file_name="estado_checklist_ssr.csv",
+            mime="text/csv"
+        )
+
+        try:
+            buffer_pdf = generar_pdf_checklist(df_export)
+            st.download_button(
+                "📥 Descargar checklist en PDF",
+                data=buffer_pdf.getvalue(),
+                file_name="estado_checklist_ssr.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"❌ Error al generar PDF: {e}")
+
+    if st.button("Cerrar sesión"):
+        st.session_state.autenticado = False
+        st.session_state.usuario = ""
+        st.rerun()
