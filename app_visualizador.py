@@ -81,7 +81,7 @@ def generar_pdf_checklist(df):
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
     buffer = BytesIO()
-    pdf.output(buffer, 'F')
+    pdf.output(name=buffer)
     buffer.seek(0)
     return buffer
 
@@ -152,7 +152,7 @@ else:
             buffer_pdf = generar_pdf_checklist(df_export)
             st.download_button(
                 "📥 Descargar checklist en PDF",
-                data=buffer_pdf.getvalue(),
+                data=buffer_pdf.read(),
                 file_name="estado_checklist_ssr.pdf",
                 mime="application/pdf"
             )
