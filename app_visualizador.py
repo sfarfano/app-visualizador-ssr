@@ -108,9 +108,13 @@ if 'checklist_estado' in st.session_state and st.session_state.get('es_admin'):
         mime="text/csv"
     )
 
-    st.download_button(
-        "📥 Descargar checklist en PDF",
-        data=generar_pdf_checklist(df_export).read(),
-        file_name="estado_checklist_ssr.pdf",
-        mime="application/pdf"
-    )
+    try:
+        buffer_pdf = generar_pdf_checklist(df_export)
+        st.download_button(
+            "📥 Descargar checklist en PDF",
+            data=buffer_pdf.getvalue(),
+            file_name="estado_checklist_ssr.pdf",
+            mime="application/pdf"
+        )
+    except Exception as e:
+        st.error(f"❌ Error al generar PDF: {e}")
