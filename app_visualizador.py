@@ -92,12 +92,15 @@ def generar_pdf_checklist(df):
     pdf.ln(10)
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
-    return pdf.output(dest='S').encode('latin1')
+    buffer = BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+    return buffer.read()
 
 # --- BOTONES DE EXPORTACIÓN (para admin) ---
 if 'checklist_estado' in st.session_state and st.session_state.get('es_admin'):
     df_export = exportar_checklist_estado(st.session_state['checklist_estado'])
-    
+
     st.download_button(
         "📥 Descargar checklist en Excel",
         data=df_export.to_csv(index=False).encode('utf-8'),
