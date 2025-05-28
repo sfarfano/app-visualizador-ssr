@@ -80,10 +80,10 @@ def generar_pdf_checklist(df):
     pdf.ln(10)
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
-    buffer = BytesIO()
-    pdf.output(buffer, 'F')
-    buffer.seek(0)
-    return buffer
+    output_path = "/tmp/estado_checklist_ssr.pdf"
+    pdf.output(output_path)
+    with open(output_path, "rb") as f:
+        return BytesIO(f.read())
 
 # --- CARGA DE DATOS Y AUTENTICACIÓN ---
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
