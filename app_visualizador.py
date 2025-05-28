@@ -81,11 +81,11 @@ def generar_pdf_checklist(df):
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
     buffer = BytesIO()
-    pdf.output(buffer)
+    pdf.output(name=buffer, dest='F')
     buffer.seek(0)
     return buffer
 
-# --- CUERPO PRINCIPAL ---
+# --- CARGA DE DATOS Y AUTENTICACIÓN ---
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
