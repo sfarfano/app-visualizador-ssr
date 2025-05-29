@@ -75,101 +75,100 @@ def formato_peso(bytes_str):
     except:
         return "-"
 
-def exportar_checklist_estado(checklist_estado):
-    filas = []
-    for ssr, entregables in checklist_estado.items():
-        for item, estado in entregables.items():
-            filas.append({"SSR": ssr, "Entregable": item, "Cumplido": "Sí" if estado else "No"})
-    return pd.DataFrame(filas)
+def generar_tabla_archivos(archivos):
+    data = []
+    for arch in archivos:
+        data.append({
+            'Archivo': arch['name'],
+            'Tamaño (kB)': round(int(arch.get('size', 0)) / 1024, 1),
+            'Última modificación': arch['modifiedTime'][:10],
+            'Enlace': arch['webViewLink']
+        })
+    return pd.DataFrame(data)
 
-def generar_pdf_checklist(df):
+def exportar_pdf(df, nombre_archivo):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=10)
-    pdf.cell(200, 10, txt="Checklist de Entregables SSR", ln=True, align="C")
+    pdf.cell(200, 10, txt=nombre_archivo, ln=True, align='C')
     pdf.ln(10)
     for index, row in df.iterrows():
-        pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
-    buffer = BytesIO()
-    buffer.write(pdf.output(dest='S').encode('latin-1'))
-    buffer.seek(0)
-    return buffer
+        linea = f"{row['Archivo']} | {row['Tamaño (kB)']} kB | {row['Última modificación'] }"
+        pdf.cell(200, 10, txt=linea, ln=True)
+    output = BytesIO()
+    pdf.output(name=output, dest='F')
+    output.seek(0)
+    return output
 
 # --- CARGA DE DATOS Y AUTENTICACIÓN ---
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
-try:
-    autorizaciones = pd.read_excel("autorizaciones.xlsx")
-    estructura = pd.read_excel("estructura_189_proyectos.xlsx")
-    checklist_base = pd.read_excel("CHECKLIST ETAPAS.xlsx", header=None).dropna()[0].tolist()
-except Exception as e:
-    st.error(f"Error cargando archivos base: {e}")
-    st.stop()
+estructura = listar_todas_las_carpetas(FOLDER_BASE_ID)
+estructura = sorted(estructura, key=lambda x: x['name'])
+proyecto_seleccionado = st.selectbox("Selecciona un proyecto SSR:", [e['name'] for e in estructura])
+carpeta_actual = next((e for e in estructura if e['name'] == proyecto_seleccionado), None)
 
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
-    st.session_state.usuario = ""
-    st.session_state.checklist_estado = {}
+if carpeta_actual:
+    subcarpetas = listar_todas_las_carpetas(carpeta_actual['id'])
+    subcarpetas = sorted(subcarpetas, key=lambda x: x['name'])
+    subcarpeta_seleccionada = st.selectbox("Selecciona subcarpeta principal:", [e['name'] for e in subcarpetas])
+    subcarpeta_actual = next((e for e in subcarpetas if e['name'] == subcarpeta_seleccionada), None)
 
-if not st.session_state.autenticado:
-    with st.form("login"):
-        usuario = st.text_input("Usuario")
-        pin = st.text_input("PIN", type="password")
-        submitted = st.form_submit_button("Ingresar")
-        if submitted:
-            fila = autorizaciones[(autorizaciones['Usuario'].astype(str).str.strip() == usuario.strip()) &
-                                  (autorizaciones['PIN'].astype(str).str.strip() == pin.strip())]
-            if fila.empty:
-                st.error("Usuario o PIN incorrecto")
+    if subcarpeta_actual:
+        subsubcarpetas = listar_todas_las_carpetas(subcarpeta_actual['id'])
+        subsubcarpetas = sorted(subsubcarpetas, key=lambda x: x['name'])
+        if subsubcarpetas:
+            subsubcarpeta_seleccionada = st.selectbox("Selecciona subcarpeta secundaria:", [e['name'] for e in subsubcarpetas])
+            subsubcarpeta_actual = next((e for e in subsubcarpetas if e['name'] == subsubcarpeta_seleccionada), None)
+        else:
+            subsubcarpeta_actual = subcarpeta_actual
+
+        if subsubcarpeta_actual:
+            archivos = listar_archivos(subsubcarpeta_actual['id'])
+            if archivos:
+                df_archivos = generar_tabla_archivos(archivos)
+                st.dataframe(df_archivos, use_container_width=True)
+                col1, col2 = st.columns([0.3, 0.7])
+                with col1:
+                    st.download_button("📥 Descargar checklist en Excel", data=df_archivos.to_csv(index=False).encode('utf-8'), file_name="checklist_documentos.csv", mime="text/csv")
+                with col2:
+                    try:
+                        pdf_bytes = exportar_pdf(df_archivos, f"Checklist Documentos {proyecto_seleccionado}")
+                        st.download_button("📄 Descargar checklist en PDF", data=pdf_bytes, file_name="checklist_documentos.pdf", mime="application/pdf")
+                    except Exception as e:
+                        st.error(f"❌ Error al generar PDF: {e}")
             else:
-                st.session_state.autenticado = True
-                st.session_state.usuario = usuario.strip()
-                st.rerun()
-else:
-    usuario = st.session_state.usuario
-    fila = autorizaciones[autorizaciones['Usuario'].astype(str).str.strip() == usuario]
-    proyectos = fila['SSR Autorizados'].iloc[0].split(',')
-    proyectos = [p.strip() for p in proyectos if p.strip()]
-    es_admin = usuario.lower() == 'admin'
-    st.session_state.es_admin = es_admin
+                st.info("No hay archivos disponibles en esta carpeta.")
 
-    st.success(f"Bienvenido {usuario}")
-    seleccionado = st.selectbox("Selecciona un SSR:", proyectos)
+# Módulo 5 - Checklist de etapas (visible solo para admin)
+if st.session_state.get("usuario", "") == "admin":
+    st.markdown("---")
+    st.subheader("🗂️ Checklist de Etapas (solo visible para admin)")
 
-    if seleccionado not in st.session_state.checklist_estado:
-        st.session_state.checklist_estado[seleccionado] = {item: False for item in checklist_base}
+    try:
+        df_checklist = pd.read_excel("CHECKLIST ETAPAS.xlsx", sheet_name="CHECKLIST ENTREGABLES")
+        df_checklist = df_checklist[df_checklist.iloc[:, 2].notna()].rename(columns={
+            df_checklist.columns[2]: "Entregable",
+            df_checklist.columns[5]: "Equipo"
+        })
+        df_checklist["Entregable"] = df_checklist["Entregable"].astype(str).str.strip()
 
-    st.markdown("### Checklist del Proyecto")
-    for i, item in enumerate(checklist_base):
-        st.session_state.checklist_estado[seleccionado][item] = st.checkbox(
-            item, value=st.session_state.checklist_estado[seleccionado][item], key=f"{seleccionado}_{i}"
-        )
+        total = len(df_checklist)
+        if "checklist_estado" not in st.session_state:
+            st.session_state.checklist_estado = {proyecto_seleccionado: {item: False for item in df_checklist["Entregable"]}}
 
-    st.divider()
+        st.write("### Nombre Proyecto")
+        completados = 0
+        for item in df_checklist["Entregable"]:
+            estado = st.session_state.checklist_estado[proyecto_seleccionado].get(item, False)
+            nuevo_estado = st.checkbox(item, value=estado, key=f"chk_{item}")
+            st.session_state.checklist_estado[proyecto_seleccionado][item] = nuevo_estado
+            if nuevo_estado:
+                completados += 1
 
-    if st.session_state.get('es_admin'):
-        df_export = exportar_checklist_estado(st.session_state['checklist_estado'])
+        avance = round((completados / total) * 100, 1) if total > 0 else 0.0
+        st.success(f"✅ Avance: {completados} de {total} entregables completados ({avance}%)")
 
-        st.download_button(
-            "📥 Descargar checklist en Excel",
-            data=df_export.to_csv(index=False).encode('utf-8'),
-            file_name="estado_checklist_ssr.csv",
-            mime="text/csv"
-        )
-
-        try:
-            buffer_pdf = generar_pdf_checklist(df_export)
-            st.download_button(
-                "📥 Descargar checklist en PDF",
-                data=buffer_pdf,
-                file_name="estado_checklist_ssr.pdf",
-                mime="application/pdf"
-            )
-        except Exception as e:
-            st.error(f"❌ Error al generar PDF: {e}")
-
-    if st.button("Cerrar sesión"):
-        st.session_state.autenticado = False
-        st.session_state.usuario = ""
-        st.rerun()
+    except Exception as e:
+        st.error(f"Error al cargar checklist de etapas: {e}")
