@@ -51,6 +51,16 @@ def listar_archivos(carpeta_id):
     archivos = service.files().list(q=query, fields="files(id, name, webViewLink, modifiedTime, size, mimeType)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
     return archivos
 
+def listar_todas_las_carpetas(padre_id):
+    carpetas = []
+    hijos = service.files().list(
+        q=f"'{padre_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
+        fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute().get('files', [])
+    for c in hijos:
+        carpetas.append(c)
+        carpetas += listar_todas_las_carpetas(c['id'])
+    return carpetas
+
 def formato_peso(bytes_str):
     try:
         b = int(bytes_str)
@@ -81,7 +91,6 @@ def generar_pdf_checklist(df):
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
     buffer = BytesIO()
-    pdf.output(dest='S').encode('latin-1')  # Esto previene error si lo interpretamos directo
     buffer.write(pdf.output(dest='S').encode('latin-1'))
     buffer.seek(0)
     return buffer
