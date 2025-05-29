@@ -127,11 +127,12 @@ if not st.session_state.autenticado:
         if autorizado:
             st.session_state.autenticado = True
             st.session_state.usuario = usuario.strip().lower()
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("Usuario o PIN incorrecto.")
     st.stop()
 
+# --- CONTENIDO PRINCIPAL ---
 estructura = listar_todas_las_carpetas(FOLDER_BASE_ID)
 estructura = sorted(estructura, key=lambda x: x['name'])
 proyecto_seleccionado = st.selectbox("Selecciona un proyecto SSR:", [e['name'] for e in estructura])
@@ -158,7 +159,7 @@ if st.session_state.get("usuario", "") == "admin":
         completados = 0
         for item in df_checklist["Entregable"]:
             estado = st.session_state.checklist_estado[proyecto_seleccionado].get(item, False)
-            nuevo_estado = st.checkbox(item, value=estado, key=f"chk_{item}")
+            nuevo_estado = st.checkbox(item, value=estado, key=f"chk_{proyecto_seleccionado}_{item}")
             st.session_state.checklist_estado[proyecto_seleccionado][item] = nuevo_estado
             if nuevo_estado:
                 completados += 1
