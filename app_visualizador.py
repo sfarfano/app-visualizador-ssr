@@ -122,7 +122,7 @@ if not st.session_state.autenticado:
     if login:
         autorizado = (
             (autorizaciones['Usuario'].astype(str).str.strip().str.lower() == usuario.strip().lower()) &
-            (autorizaciones['PIN'].astype(str).str.strip() == pin.strip())
+            (autorizaciones['PIN'].astype(str).str.strip().str.replace("’", "").str.replace("‘", "") == pin.strip())
         ).any()
         if autorizado:
             st.session_state.autenticado = True
@@ -136,12 +136,6 @@ estructura = listar_todas_las_carpetas(FOLDER_BASE_ID)
 estructura = sorted(estructura, key=lambda x: x['name'])
 proyecto_seleccionado = st.selectbox("Selecciona un proyecto SSR:", [e['name'] for e in estructura])
 carpeta_actual = next((e for e in estructura if e['name'] == proyecto_seleccionado), None)
-
-# Resto del código continúa igual...
-
-
-# Resto del código continúa igual...
-
 
 # Módulo 5 - Checklist de etapas (visible solo para admin)
 if st.session_state.get("usuario", "") == "admin":
