@@ -104,7 +104,12 @@ def exportar_pdf(df, nombre_archivo):
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
-# Pantalla de autenticación básica
+try:
+    autorizaciones = pd.read_excel("autorizaciones.xlsx")
+except Exception as e:
+    st.error(f"Error al cargar autorizaciones: {e}")
+    st.stop()
+
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
     st.session_state.usuario = ""
@@ -115,7 +120,11 @@ if not st.session_state.autenticado:
         pin = st.text_input("Ingrese su PIN:", type="password")
         login = st.form_submit_button("Ingresar")
     if login:
-        if usuario.strip().lower() == "admin" and pin.strip() == "1234":
+        autorizado = (
+            (autorizaciones['Usuario'].astype(str).str.strip().str.lower() == usuario.strip().lower()) &
+            (autorizaciones['PIN'].astype(str).str.strip() == pin.strip())
+        ).any()
+        if autorizado:
             st.session_state.autenticado = True
             st.session_state.usuario = usuario.strip().lower()
             st.rerun()
@@ -124,10 +133,12 @@ if not st.session_state.autenticado:
     st.stop()
 
 estructura = listar_todas_las_carpetas(FOLDER_BASE_ID)
-st.write("Estructura detectada:", estructura)  # Debug temporal
 estructura = sorted(estructura, key=lambda x: x['name'])
 proyecto_seleccionado = st.selectbox("Selecciona un proyecto SSR:", [e['name'] for e in estructura])
 carpeta_actual = next((e for e in estructura if e['name'] == proyecto_seleccionado), None)
+
+# Resto del código continúa igual...
+
 
 # Resto del código continúa igual...
 
