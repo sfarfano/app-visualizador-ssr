@@ -127,7 +127,7 @@ if not st.session_state.autenticado:
         if autorizado:
             st.session_state.autenticado = True
             st.session_state.usuario = usuario.strip().lower()
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Usuario o PIN incorrecto.")
     st.stop()
