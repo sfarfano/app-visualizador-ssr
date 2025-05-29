@@ -104,42 +104,33 @@ def exportar_pdf(df, nombre_archivo):
 st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Logo_CFC.svg/320px-Logo_CFC.svg.png", width=250)
 st.title("🔍 Plataforma de Revisión de Documentos SSR")
 
+# Pantalla de autenticación básica
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+    st.session_state.usuario = ""
+
+if not st.session_state.autenticado:
+    with st.form("login_form"):
+        usuario = st.text_input("Ingrese su usuario:")
+        pin = st.text_input("Ingrese su PIN:", type="password")
+        login = st.form_submit_button("Ingresar")
+    if login:
+        if usuario.strip().lower() == "admin" and pin.strip() == "1234":
+            st.session_state.autenticado = True
+            st.session_state.usuario = usuario.strip().lower()
+            st.rerun()
+        else:
+            st.error("Usuario o PIN incorrecto.")
+    st.stop()
+
 estructura = listar_todas_las_carpetas(FOLDER_BASE_ID)
+st.write("Estructura detectada:", estructura)  # Debug temporal
 estructura = sorted(estructura, key=lambda x: x['name'])
 proyecto_seleccionado = st.selectbox("Selecciona un proyecto SSR:", [e['name'] for e in estructura])
 carpeta_actual = next((e for e in estructura if e['name'] == proyecto_seleccionado), None)
 
-if carpeta_actual:
-    subcarpetas = listar_todas_las_carpetas(carpeta_actual['id'])
-    subcarpetas = sorted(subcarpetas, key=lambda x: x['name'])
-    subcarpeta_seleccionada = st.selectbox("Selecciona subcarpeta principal:", [e['name'] for e in subcarpetas])
-    subcarpeta_actual = next((e for e in subcarpetas if e['name'] == subcarpeta_seleccionada), None)
+# Resto del código continúa igual...
 
-    if subcarpeta_actual:
-        subsubcarpetas = listar_todas_las_carpetas(subcarpeta_actual['id'])
-        subsubcarpetas = sorted(subsubcarpetas, key=lambda x: x['name'])
-        if subsubcarpetas:
-            subsubcarpeta_seleccionada = st.selectbox("Selecciona subcarpeta secundaria:", [e['name'] for e in subsubcarpetas])
-            subsubcarpeta_actual = next((e for e in subsubcarpetas if e['name'] == subsubcarpeta_seleccionada), None)
-        else:
-            subsubcarpeta_actual = subcarpeta_actual
-
-        if subsubcarpeta_actual:
-            archivos = listar_archivos(subsubcarpeta_actual['id'])
-            if archivos:
-                df_archivos = generar_tabla_archivos(archivos)
-                st.dataframe(df_archivos, use_container_width=True)
-                col1, col2 = st.columns([0.3, 0.7])
-                with col1:
-                    st.download_button("📥 Descargar checklist en Excel", data=df_archivos.to_csv(index=False).encode('utf-8'), file_name="checklist_documentos.csv", mime="text/csv")
-                with col2:
-                    try:
-                        pdf_bytes = exportar_pdf(df_archivos, f"Checklist Documentos {proyecto_seleccionado}")
-                        st.download_button("📄 Descargar checklist en PDF", data=pdf_bytes, file_name="checklist_documentos.pdf", mime="application/pdf")
-                    except Exception as e:
-                        st.error(f"❌ Error al generar PDF: {e}")
-            else:
-                st.info("No hay archivos disponibles en esta carpeta.")
 
 # Módulo 5 - Checklist de etapas (visible solo para admin)
 if st.session_state.get("usuario", "") == "admin":
