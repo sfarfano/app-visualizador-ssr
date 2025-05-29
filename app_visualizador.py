@@ -81,7 +81,8 @@ def generar_pdf_checklist(df):
     for index, row in df.iterrows():
         pdf.cell(200, 6, txt=f"{row['SSR']} - {row['Entregable']} - {row['Cumplido']}", ln=True)
     buffer = BytesIO()
-    pdf.output(buffer, 'F')
+    pdf.output(dest='S').encode('latin-1')  # Esto previene error si lo interpretamos directo
+    buffer.write(pdf.output(dest='S').encode('latin-1'))
     buffer.seek(0)
     return buffer
 
