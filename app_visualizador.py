@@ -108,7 +108,7 @@ if not st.session_state.autenticado:
             if autorizado:
                 st.session_state.autenticado = True
                 st.session_state.usuario = usuario.strip().lower()
-                st.experimental_set_query_params(page="home")  # Evitar loop de recarga
+                st.query_params(page="home")  # Actualizado desde experimental
             else:
                 st.error("Usuario o PIN incorrecto.")
                 form_submitted = True
